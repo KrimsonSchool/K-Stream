@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.Video;
 using System.Collections;
 using System;
+using UnityEngine.SceneManagement;
 
 public class GoogleDriveVideoStreamer : MonoBehaviour
 {
@@ -16,6 +17,8 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
     public Transform buttonContainer;
     public RawImage videoDisplay;
     public VideoPlayer videoPlayer;
+
+    public GameObject loader;
 
     [Serializable]
     public class DriveFile
@@ -32,16 +35,37 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
 
     private void Start()
     {
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.Confined;
         StartCoroutine(FetchDriveVideos());
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (!videoPlayer.isPaused)
+            {
+                videoPlayer.Pause();
+            }
+            else
+            {
+                videoPlayer.Play();
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            SceneManager.LoadScene(0);
+        }
     }
 
     IEnumerator FetchDriveVideos()
     {
-        // Correctly encode the full query
-        string query = Uri.EscapeDataString($"'{folderId}' in parents and mimeType contains 'video/'");
-        string url = $"https://www.googleapis.com/drive/v3/files?q={query}&fields=files(id,name)&key={apiKey}";
+        string query = Uri.EscapeDataString($"'{folderId}' in parents and mimeType contains 'video'");
+        string url = $"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=files(id,name,mimeType)&key={apiKey}";
 
-        Debug.Log("Sending request to: " + url);  // Good for debugging!
+        Debug.Log("Google Drive URL: " + url);
 
         UnityWebRequest www = UnityWebRequest.Get(url);
         yield return www.SendWebRequest();
@@ -55,11 +79,14 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
 
         DriveFileList fileList = JsonUtility.FromJson<DriveFileList>(www.downloadHandler.text);
 
+        Debug.Log($"Fetched {fileList.files.Length} videos.");
+
         foreach (DriveFile file in fileList.files)
         {
             CreateVideoButton(file.name, file.id);
         }
     }
+
 
 
 
@@ -74,8 +101,13 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
     }
 
     IEnumerator PlayVideoFromDrive(string fileId)
-    {
+    {        
         string videoUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media&key={apiKey}";
+        
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        loader.SetActive(true);
+        
 
         videoPlayer.source = VideoSource.Url;
         videoPlayer.url = videoUrl;
@@ -86,7 +118,7 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
         videoPlayer.Prepare();
         while (!videoPlayer.isPrepared)
             yield return null;
-
+        
         videoPlayer.Play();
     }
 }
