@@ -78,6 +78,16 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
             }
         }
 
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            videoPlayer.time += 10;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            videoPlayer.time -= 10;
+        }
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             SceneManager.LoadScene(0);
