@@ -19,6 +19,10 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
     public VideoPlayer videoPlayer;
 
     public GameObject loader;
+    public GameObject pause;
+    public Text timeText;
+
+    private string playingFileName;
 
     [Serializable]
     public class DriveFile
@@ -47,10 +51,30 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
             if (!videoPlayer.isPaused)
             {
                 videoPlayer.Pause();
+                pause.SetActive(true);
+                timeText.text = "Paused";
+                
+                int totalSeconds = Mathf.RoundToInt(videoPlayer.frame / videoPlayer.frameRate);
+
+                int minutes = totalSeconds / 60;
+                int seconds = totalSeconds % 60;
+                
+                string past = minutes.ToString("00") + ":" + seconds.ToString("00");
+                
+                 totalSeconds = Mathf.RoundToInt(videoPlayer.frameCount / videoPlayer.frameRate);
+
+                 minutes = totalSeconds / 60;
+                 seconds = totalSeconds % 60;
+                
+                string to = minutes.ToString("00") + ":" + seconds.ToString("00");
+                
+                timeText.text = playingFileName+"  -  "+ past+"/"+ to;
+
             }
             else
             {
                 videoPlayer.Play();
+                pause.SetActive(false);
             }
         }
 
@@ -80,6 +104,8 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
         DriveFileList fileList = JsonUtility.FromJson<DriveFileList>(www.downloadHandler.text);
 
         Debug.Log($"Fetched {fileList.files.Length} videos.");
+        
+        Array.Sort(fileList.files, (a, b) => string.Compare(a.name, b.name, StringComparison.OrdinalIgnoreCase));
 
         foreach (DriveFile file in fileList.files)
         {
@@ -90,24 +116,24 @@ public class GoogleDriveVideoStreamer : MonoBehaviour
 
 
 
-    void CreateVideoButton(string name, string fileId)
+    void CreateVideoButton(string fName, string fileId)
     {
         GameObject buttonObj = Instantiate(buttonPrefab, buttonContainer);
-        buttonObj.GetComponentInChildren<Text>().text = name;
+        buttonObj.GetComponentInChildren<Text>().text = fName;
         buttonObj.GetComponent<Button>().onClick.AddListener(() =>
         {
-            StartCoroutine(PlayVideoFromDrive(fileId));
+            StartCoroutine(PlayVideoFromDrive(fileId, fName));
         });
     }
 
-    IEnumerator PlayVideoFromDrive(string fileId)
+    IEnumerator PlayVideoFromDrive(string fileId, string fileName)
     {        
         string videoUrl = $"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media&key={apiKey}";
         
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
         loader.SetActive(true);
-        
+        playingFileName = fileName;
 
         videoPlayer.source = VideoSource.Url;
         videoPlayer.url = videoUrl;
